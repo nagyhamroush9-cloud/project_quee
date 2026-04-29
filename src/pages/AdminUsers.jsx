@@ -7,6 +7,7 @@ import { Input } from "../components/Input";
 import { Select } from "../components/Select";
 
 export function AdminUsers() {
+  console.log("AdminUsers component rendered");
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -20,15 +21,24 @@ export function AdminUsers() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState("PATIENT");
+  const [departmentId, setDepartmentId] = useState("");
+  const [departments, setDepartments] = useState([]);
   const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    api.get("/departments").then((r) => setDepartments(r.data.departments || [])).catch(() => setDepartments([]));
+  }, []);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
+      console.log("Loading users with params:", { q: q.trim() || undefined, role: role || undefined, limit, offset: (page - 1) * limit });
       const { data } = await api.get("/admin/users", { params: { q: q.trim() || undefined, role: role || undefined, limit, offset: (page - 1) * limit } });
+      console.log("API response:", data);
       setUsers(data.users);
       setTotal(data.total);
     } catch (e) {
+      console.error("API error:", e);
       toast.error("Failed to load users");
       setUsers([]);
       setTotal(0);
@@ -77,26 +87,55 @@ export function AdminUsers() {
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (optional)" />
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
-          <Select value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+          <Select
+            value={newRole}
+            onChange={(e) => {
+              setNewRole(e.target.value);
+              if (e.target.value !== "PATIENT" && e.target.value !== "DOCTOR") {
+                setDepartmentId("");
+              }
+            }}
+          >
             <option value="PATIENT">PATIENT</option>
             <option value="DOCTOR">DOCTOR</option>
             <option value="RECEPTIONIST">RECEPTIONIST</option>
             <option value="ADMIN">ADMIN</option>
           </Select>
         </div>
+        {(newRole === "PATIENT" || newRole === "DOCTOR") && (
+          <div className="mt-3">
+            <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">Department</div>
+            <Select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+              <option value="">-- Select department --</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
         <div className="mt-3">
           <Button
-            disabled={creating}
+            disabled={creating || (newRole === "PATIENT" && !departmentId)}
             onClick={async () => {
               setCreating(true);
               try {
-                await api.post("/admin/users", { fullName, email, phone: phone || undefined, password, role: newRole });
+                await api.post("/admin/users", {
+                  fullName,
+                  email,
+                  phone: phone || undefined,
+                  password,
+                  role: newRole,
+                  departmentId: departmentId ? Number(departmentId) : undefined
+                });
                 toast.success("Created");
                 setFullName("");
                 setEmail("");
                 setPhone("");
                 setPassword("");
                 setNewRole("PATIENT");
+                setDepartmentId("");
                 await load();
               } catch (e) {
                 toast.error(e?.response?.data?.error?.message || "Failed");

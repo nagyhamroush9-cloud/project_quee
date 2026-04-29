@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
         sessionStorage.setItem("hqms_user", JSON.stringify(r.data.user));
         setUser(r.data.user);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [token]);
 
   const value = useMemo(
@@ -95,7 +95,18 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    console.error("useAuth must be used within AuthProvider");
+    return {
+      token: null,
+      user: null,
+      setUser: () => { },
+      isAuthed: false,
+      login: async () => { },
+      register: async () => { },
+      logout: () => { }
+    };
+  }
   return ctx;
 }
 

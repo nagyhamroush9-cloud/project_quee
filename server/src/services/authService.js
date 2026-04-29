@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { withTx, pool } from "../config/db.js";
 import { UserRepo } from "../repositories/userRepo.js";
+import { DoctorDepartmentRepo } from "../repositories/doctorDepartmentRepo.js";
 import { badRequest, unauthorized } from "../utils/httpError.js";
 
 function signToken(user) {
@@ -14,13 +15,27 @@ function signToken(user) {
 }
 
 export const AuthService = {
-  async register({ fullName, email, phone, password, role, dateOfBirth, isDisabled, hasSpecialNeeds }) {
+  async register({ fullName, email, phone, password, role, dateOfBirth, isDisabled, hasSpecialNeeds, departmentId }) {
     if (role === "ADMIN") throw badRequest("Admin registration is not allowed");
     return withTx(async (conn) => {
+      if ((role === "PATIENT" || role === "DOCTOR") && !departmentId) throw badRequest("Department is required");
       const existing = await UserRepo.findByEmail(conn, email);
       if (existing) throw badRequest("Email already exists");
       const passwordHash = await bcrypt.hash(password, 12);
-      const created = await UserRepo.create(conn, { fullName, email, phone, passwordHash, role, dateOfBirth, isDisabled, hasSpecialNeeds });
+      const created = await UserRepo.create(conn, {
+        fullName,
+        email,
+        phone,
+        passwordHash,
+        role,
+        dateOfBirth,
+        isDisabled,
+        hasSpecialNeeds,
+        departmentId
+      });
+      if (role === "DOCTOR" && departmentId) {
+        await DoctorDepartmentRepo.replaceDoctorDepartments(conn, { doctorId: created.id, departmentIds: [departmentId] });
+      }
       const user = await UserRepo.findById(conn, created.id);
       return { user, token: signToken({ ...user, full_name: user.full_name }) };
     });

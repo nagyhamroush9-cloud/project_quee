@@ -72,7 +72,7 @@ export function Login() {
           </Button>
 
           <div className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            {t("register")}؟{" "}
+            {t("needAccount")}{" "}
             <Link className="text-sky-600 hover:underline" to="/register">
               {t("register")}
             </Link>

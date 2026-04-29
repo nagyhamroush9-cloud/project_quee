@@ -29,8 +29,8 @@ userRoutes.get(
          FROM users
          WHERE ${where.join(" AND ")}
          ORDER BY created_at DESC
-         LIMIT ? OFFSET ?`,
-        [...params, limit, offset]
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
       );
 
       const [[{ total }]] = await conn.execute(
@@ -54,20 +54,30 @@ userRoutes.put(
   async (req, res, next) => {
     const conn = await pool.getConnection();
     try {
-      const { fullName, phone, dateOfBirth, isDisabled } = req.body;
+      const { fullName, phone, dateOfBirth, isDisabled, hasSpecialNeeds } = req.body;
       const userId = req.user.id;
 
       await conn.execute(
-        `UPDATE users SET full_name = ?, phone = ?, date_of_birth = ?, is_disabled = ? WHERE id = ?`,
-        [fullName, phone, dateOfBirth, isDisabled ? 1 : 0, userId]
+        `UPDATE users
+         SET full_name = ?, phone = ?, date_of_birth = ?, is_disabled = ?, has_special_needs = ?
+         WHERE id = ?`,
+        [fullName, phone, dateOfBirth, isDisabled ? 1 : 0, hasSpecialNeeds ? 1 : 0, userId]
       );
 
       const [rows] = await conn.execute(
-        `SELECT id, full_name, email, phone, role, date_of_birth, is_disabled, created_at FROM users WHERE id = ?`,
+        `SELECT u.id, u.full_name, u.email, u.phone, u.role, u.date_of_birth, u.is_disabled,
+                u.has_special_needs, u.department_id, d.name AS department_name, u.created_at
+         FROM users u
+         LEFT JOIN departments d ON d.id = u.department_id
+         WHERE u.id = ?`,
         [userId]
       );
 
-      res.json({ user: rows[0] });
+      const user = rows[0];
+      if (user?.department_id) {
+        user.department = { id: user.department_id, name: user.department_name };
+      }
+      res.json({ user });
     } catch (e) {
       next(e);
     } finally {

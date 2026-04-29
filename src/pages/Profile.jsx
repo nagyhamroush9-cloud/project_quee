@@ -10,18 +10,20 @@ import { useAuth } from "../state/auth.jsx";
 export function Profile() {
   const { t } = useTranslation();
   const { user, setUser } = useAuth();
-  const [fullName, setFullName] = useState(user?.full_name || "");
+  const [fullName, setFullName] = useState(user?.full_name || user?.fullName || "");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [dateOfBirth, setDateOfBirth] = useState(user?.date_of_birth ? user.date_of_birth.split('T')[0] : "");
-  const [isDisabled, setIsDisabled] = useState(user?.is_disabled || false);
+  const [dateOfBirth, setDateOfBirth] = useState(user?.date_of_birth ? user.date_of_birth.split("T")[0] : "");
+  const [isDisabled, setIsDisabled] = useState(Boolean(user?.is_disabled));
+  const [hasSpecialNeeds, setHasSpecialNeeds] = useState(Boolean(user?.has_special_needs));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      setFullName(user.full_name || "");
+      setFullName(user.full_name || user.fullName || "");
       setPhone(user.phone || "");
-      setDateOfBirth(user.date_of_birth ? user.date_of_birth.split('T')[0] : "");
-      setIsDisabled(user.is_disabled || false);
+      setDateOfBirth(user.date_of_birth ? user.date_of_birth.split("T")[0] : "");
+      setIsDisabled(Boolean(user.is_disabled));
+      setHasSpecialNeeds(Boolean(user.has_special_needs));
     }
   }, [user]);
 
@@ -32,12 +34,13 @@ export function Profile() {
         fullName,
         phone: phone || null,
         dateOfBirth: dateOfBirth || null,
-        isDisabled
+        isDisabled,
+        hasSpecialNeeds
       });
       setUser(data.user);
-      toast.success("Profile updated");
+      toast.success(t("profileUpdated"));
     } catch (e) {
-      toast.error(e?.response?.data?.error?.message || "Update failed");
+      toast.error(e?.response?.data?.error?.message || t("updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -64,7 +67,7 @@ export function Profile() {
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">Date of Birth</div>
+              <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">{t("dateOfBirth")}</div>
               <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -72,14 +75,14 @@ export function Profile() {
               {t("disabled")}
             </label>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={hasSpecialNeeds} onChange={(e) => setHasSpecialNeeds(e.target.checked)} />
+            {t("specialNeeds")}
+          </label>
         </div>
 
-        <Button
-          className="mt-6"
-          disabled={loading}
-          onClick={handleSave}
-        >
-          {loading ? "..." : "Save"}
+        <Button className="mt-6" disabled={loading} onClick={handleSave}>
+          {loading ? "..." : t("save")}
         </Button>
       </Card>
     </div>

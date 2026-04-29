@@ -1,28 +1,30 @@
 import React, { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 
 export function Notifications() {
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
 
   async function load() {
     const { data } = await api.get("/notifications/me");
-    setItems(data.notifications);
+    setItems(data.notifications || []);
   }
 
   useEffect(() => {
-    load().catch(() => toast.error("Failed to load"));
+    load().catch(() => toast.error(t("loadFailed")));
   }, []);
 
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
-      <div className="text-2xl font-semibold">Notifications</div>
+      <div className="text-2xl font-semibold">{t("notifications")}</div>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">Inbox</div>
+        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">{t("inbox")}</div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {items.map((n) => (
             <div key={n.id} className="p-4">
@@ -31,7 +33,7 @@ export function Notifications() {
                   <div className="text-sm font-semibold">{n.title}</div>
                   <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{n.body}</div>
                   <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    {n.channel} • {new Date(n.created_at).toLocaleString()}
+                    {n.channel} - {new Date(n.created_at).toLocaleString()}
                   </div>
                 </div>
                 {!n.is_read ? (
@@ -43,20 +45,19 @@ export function Notifications() {
                       await load();
                     }}
                   >
-                    Mark read
+                    {t("markRead")}
                   </Button>
                 ) : (
                   <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300">
-                    Read
+                    {t("read")}
                   </span>
                 )}
               </div>
             </div>
           ))}
-          {!items.length ? <div className="p-6 text-center text-slate-500 dark:text-slate-400">—</div> : null}
+          {!items.length ? <div className="p-6 text-center text-slate-500 dark:text-slate-400">{t("noNotifications")}</div> : null}
         </div>
       </Card>
     </div>
   );
 }
-

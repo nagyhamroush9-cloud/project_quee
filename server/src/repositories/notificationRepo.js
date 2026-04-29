@@ -30,8 +30,8 @@ export const NotificationRepo = {
        FROM notifications
        WHERE user_id = ?
        ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [userId, parseInt(limit, 10), parseInt(offset, 10)]
+       LIMIT ${limit} OFFSET ${offset}`,
+      [userId]
     );
     return rows;
   },

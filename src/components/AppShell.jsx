@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, CalendarClock, CreditCard, LayoutDashboard, LogOut, ScrollText, Users, User, Bell, MessageCircle } from "lucide-react";
+import { Activity, CalendarClock, CreditCard, LayoutDashboard, LogOut, ScrollText, Users, User, Bell } from "lucide-react";
 import { cn } from "../lib/cn";
 import { useAuth } from "../state/auth.jsx";
 import { useTheme } from "../state/theme.jsx";
@@ -32,7 +32,6 @@ export function AppShell({ children }) {
   const role = user?.role;
   const links = [];
   links.push({ to: "/app", icon: LayoutDashboard, label: t("dashboard") });
-  links.push({ to: "/app/chat", icon: MessageCircle, label: t("chat") });
   links.push({ to: "/app/notifications", icon: Bell, label: t("notifications") });
 
   if (role === "PATIENT") {

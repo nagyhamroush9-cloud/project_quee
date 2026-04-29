@@ -13,7 +13,11 @@ export const registerSchema = z.object({
   role: z.enum(["RECEPTIONIST", "DOCTOR", "PATIENT"]),
   dateOfBirth: z.string().date().optional(),
   isDisabled: z.boolean().optional(),
-  hasSpecialNeeds: z.boolean().optional()
+  hasSpecialNeeds: z.boolean().optional(),
+  departmentId: z.number().int().positive().optional()
+}).refine((value) => !["PATIENT", "DOCTOR"].includes(value.role) || value.departmentId !== undefined, {
+  message: "departmentId is required for patient and doctor registration",
+  path: ["departmentId"]
 });
 
 export const loginSchema = z.object({

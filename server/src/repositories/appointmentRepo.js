@@ -44,8 +44,8 @@ export const AppointmentRepo = {
        LEFT JOIN users doc ON doc.id = a.doctor_id
        WHERE a.patient_id = ?
        ORDER BY a.scheduled_at DESC
-       LIMIT ? OFFSET ?`,
-      [patientId, parseInt(limit, 10), parseInt(offset, 10)]
+       LIMIT ${limit} OFFSET ${offset}`,
+      [patientId]
     );
     return rows;
   },

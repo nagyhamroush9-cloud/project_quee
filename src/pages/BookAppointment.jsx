@@ -12,7 +12,7 @@ export function BookAppointment() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const departmentId = location.state?.departmentId || "";
+  const departmentId = location.state?.departmentId || user?.department?.id || user?.department_id || "";
   const [queueStats, setQueueStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
@@ -30,19 +30,25 @@ export function BookAppointment() {
   }, [departmentId, navigate]);
 
   const handleBook = async () => {
+    if (!departmentId) {
+      toast.error(t("selectDepartment"));
+      return;
+    }
     setBooking(true);
     try {
-      // Mock payment
-      await api.post("/payments/mock-er", { amountCents: 1500, currency: "USD" });
-      // Book appointment
-      await api.post("/appointments/book", {
+      const { data } = await api.post("/appointments/book", {
         departmentId: Number(departmentId),
         notes: "Booked via registration"
       });
-      toast.success("Appointment booked!");
+      await api.post("/payments/mock", {
+        appointmentId: data.appointmentId,
+        amountCents: 1500,
+        currency: "USD"
+      });
+      toast.success(t("appointmentBooked"));
       navigate("/app/appointments");
     } catch (e) {
-      toast.error(e?.response?.data?.error?.message || "Booking failed");
+      toast.error(e?.response?.data?.error?.message || t("bookingFailed"));
     } finally {
       setBooking(false);
     }
@@ -56,36 +62,33 @@ export function BookAppointment() {
       <div className="text-2xl font-semibold">{t("bookAppointment")}</div>
 
       <Card className="p-6">
-        <div className="text-lg font-semibold mb-4">Queue Preview</div>
+        <div className="mb-4 text-lg font-semibold">{t("queuePreview")}</div>
         {queueStats ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
-              <div className="text-xs text-slate-500 dark:text-slate-400">People ahead</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{t("peopleAhead")}</div>
               <div className="text-2xl font-semibold">{queueStats.counts?.waiting ?? 0}</div>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Estimated wait</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{t("estimatedWait")}</div>
               <div className="text-2xl font-semibold">{Math.round((queueStats.avgWaitToCallSeconds ?? 0) / 60)}m</div>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Processing time</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{t("processingTime")}</div>
               <div className="text-2xl font-semibold">{Math.round((queueStats.avgCallToServeSeconds ?? 0) / 60)}m</div>
             </div>
           </div>
         ) : (
-          <div className="mb-6 text-slate-500">No queue data available</div>
+          <div className="mb-6 text-slate-500">{t("noQueueData")}</div>
         )}
 
-        <div className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-          Based on your profile (age: {user?.date_of_birth ? new Date().getFullYear() - new Date(user.date_of_birth).getFullYear() : "unknown"}, disabled: {user?.is_disabled ? "yes" : "no"}), you may get priority.
+        <div className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          {t("priorityHint")} {user?.date_of_birth ? new Date().getFullYear() - new Date(user.date_of_birth).getFullYear() : t("unknown")},{" "}
+          {user?.is_disabled ? t("disabled") : t("normal")}.
         </div>
 
-        <Button
-          className="w-full"
-          disabled={booking}
-          onClick={handleBook}
-        >
-          {booking ? "..." : `Pay $15 & Book Appointment`}
+        <Button className="w-full" disabled={booking || !departmentId} onClick={handleBook}>
+          {booking ? "..." : t("payAndBook")}
         </Button>
       </Card>
     </div>

@@ -11,8 +11,8 @@ export function DoctorSchedule() {
   useEffect(() => {
     api
       .get("/appointments/doctor/today")
-      .then((r) => setAppointments(r.data.appointments))
-      .catch(() => toast.error("Failed"));
+      .then((r) => setAppointments(r.data.appointments || []))
+      .catch(() => toast.error(t("loadFailed")));
   }, []);
 
   return (
@@ -21,7 +21,7 @@ export function DoctorSchedule() {
       <div className="text-2xl font-semibold">{t("appointments")}</div>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">Today</div>
+        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">{t("today")}</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-950 dark:text-slate-400">
@@ -44,7 +44,7 @@ export function DoctorSchedule() {
               {!appointments.length ? (
                 <tr>
                   <td className="p-6 text-center text-slate-500 dark:text-slate-400" colSpan={4}>
-                    —
+                    {t("noAppointmentsToday")}
                   </td>
                 </tr>
               ) : null}
@@ -55,4 +55,3 @@ export function DoctorSchedule() {
     </div>
   );
 }
-

@@ -129,7 +129,7 @@ queueRoutes.post("/complete", requireAuth, requireRole("DOCTOR", "ADMIN"), valid
   }
 });
 
-queueRoutes.get("/department/:departmentId/metrics", requireAuth, requireRole("RECEPTIONIST", "DOCTOR", "ADMIN"), validateParams(idParamSchema), async (req, res, next) => {
+queueRoutes.get("/department/:departmentId/metrics", requireAuth, requireRole("PATIENT", "RECEPTIONIST", "DOCTOR", "ADMIN"), validateParams(idParamSchema), async (req, res, next) => {
   const conn = await (await import("../../config/db.js")).pool.getConnection();
   try {
     const { QueueRepo } = await import("../../repositories/queueRepo.js");

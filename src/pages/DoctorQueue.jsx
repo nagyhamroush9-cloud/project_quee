@@ -5,20 +5,75 @@ import { api } from "../lib/api";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { Select } from "../components/Select";
 import { useAuth } from "../state/auth.jsx";
 
 export function DoctorQueue() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const userDepartmentId = user?.department?.id || user?.department_id || "";
   const [entries, setEntries] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(userDepartmentId ? String(userDepartmentId) : "");
   const [calling, setCalling] = useState(false);
   const [completeId, setCompleteId] = useState("");
-  const departmentId = user?.department?.id;
+  const departmentId = selectedDepartmentId || (userDepartmentId ? String(userDepartmentId) : "");
+
+  async function loadQueue(nextDepartmentId = departmentId) {
+    if (!nextDepartmentId) {
+      setEntries([]);
+      return;
+    }
+    const { data } = await api.get(`/queue/department/${nextDepartmentId}`);
+    setEntries(data.entries || []);
+  }
 
   useEffect(() => {
-    if (!departmentId) return;
-    api.get(`/queue/department/${departmentId}`).then((r) => setEntries(r.data.entries));
+    api
+      .get("/departments/me")
+      .then((r) => {
+        const nextDepartments = r.data.departments || [];
+        setDepartments(nextDepartments);
+        if (!selectedDepartmentId && nextDepartments.length) {
+          setSelectedDepartmentId(String(nextDepartments[0].id));
+        }
+      })
+      .catch(() => toast.error(t("loadFailed")));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDepartmentId && userDepartmentId) {
+      setSelectedDepartmentId(String(userDepartmentId));
+    }
+  }, [selectedDepartmentId, userDepartmentId]);
+
+  useEffect(() => {
+    loadQueue().catch(() => toast.error(t("loadFailed")));
   }, [departmentId]);
+
+  const callNext = async () => {
+    setCalling(true);
+    try {
+      await api.post("/queue/call-next", { departmentId: Number(departmentId) });
+      toast.success(t("called"));
+      await loadQueue();
+    } catch (e) {
+      toast.error(e?.response?.data?.error?.message || t("callNextFailed"));
+    } finally {
+      setCalling(false);
+    }
+  };
+
+  const completeQueueEntry = async (queueEntryId) => {
+    try {
+      await api.post("/queue/complete", { queueEntryId: Number(queueEntryId) });
+      toast.success(t("completed"));
+      setCompleteId("");
+      await loadQueue();
+    } catch (e) {
+      toast.error(e?.response?.data?.error?.message || t("completeFailed"));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -29,44 +84,23 @@ export function DoctorQueue() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">{t("department")}</div>
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
-              {user?.full_name} - {user?.department?.name}
-            </div>
+            <Select value={departmentId} onChange={(e) => setSelectedDepartmentId(e.target.value)}>
+              <option value="">{t("noDepartmentAssigned")}</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="flex items-end">
-            <Button
-              disabled={calling || !departmentId}
-              onClick={async () => {
-                setCalling(true);
-                try {
-                  await api.post("/queue/call-next", { departmentId: Number(departmentId) });
-                  toast.success("Called");
-                } catch (e) {
-                  toast.error(e?.response?.data?.error?.message || "Failed");
-                } finally {
-                  setCalling(false);
-                }
-              }}
-            >
+            <Button disabled={calling || !departmentId} onClick={callNext}>
               {calling ? "..." : t("callNext")}
             </Button>
           </div>
           <div className="flex items-end gap-2">
-            <Input value={completeId} onChange={(e) => setCompleteId(e.target.value)} placeholder="QueueEntryId" />
-            <Button
-              variant="secondary"
-              disabled={!completeId}
-              onClick={async () => {
-                try {
-                  await api.post("/queue/complete", { queueEntryId: Number(completeId) });
-                  toast.success("Completed");
-                  setCompleteId("");
-                  if (departmentId) await api.get(`/queue/department/${departmentId}`).then((r) => setEntries(r.data.entries));
-                } catch (e) {
-                  toast.error(e?.response?.data?.error?.message || "Failed");
-                }
-              }}
-            >
+            <Input value={completeId} onChange={(e) => setCompleteId(e.target.value)} placeholder={t("queueEntryId")} />
+            <Button variant="secondary" disabled={!completeId} onClick={() => completeQueueEntry(completeId)}>
               {t("complete")}
             </Button>
           </div>
@@ -74,7 +108,7 @@ export function DoctorQueue() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">Live queue</div>
+        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">{t("liveQueue")}</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-950 dark:text-slate-400">
@@ -102,8 +136,8 @@ export function DoctorQueue() {
               ))}
               {!entries.length ? (
                 <tr>
-                  <td className="p-6 text-center text-slate-500 dark:text-slate-400" colSpan={6}>
-                    —
+                  <td className="p-6 text-center text-slate-500 dark:text-slate-400" colSpan={7}>
+                    {t("noQueueEntries")}
                   </td>
                 </tr>
               ) : null}
@@ -114,4 +148,3 @@ export function DoctorQueue() {
     </div>
   );
 }
-

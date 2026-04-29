@@ -30,7 +30,13 @@ authRoutes.get("/me", requireAuth, async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
     const user = await UserRepo.findById(conn, req.user.id);
-    if (user && user.role === 'DOCTOR') {
+    if (!user) {
+      return res.json({ user: null });
+    }
+    if (user.department_id) {
+      user.department = { id: user.department_id, name: user.department_name };
+    }
+    if (user.role === 'DOCTOR' && !user.department) {
       const [departments] = await conn.execute(
         `SELECT d.id, d.name
          FROM doctor_departments dd

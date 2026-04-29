@@ -6,7 +6,6 @@ import { withTx, pool } from "../../config/db.js";
 import { SmsService } from "../../services/smsService.js";
 import { badRequest, notFound } from "../../utils/httpError.js";
 import { DoctorDepartmentRepo } from "../../repositories/doctorDepartmentRepo.js";
-import { CapacityRepo } from "../../repositories/capacityRepo.js";
 import { AppointmentRepo } from "../../repositories/appointmentRepo.js";
 
 export const appointmentRoutes = Router();
@@ -39,23 +38,19 @@ appointmentRoutes.post("/book", requireAuth, requireRole("PATIENT"), validateBod
   try {
     const { departmentId, notes } = req.body;
     const created = await withTx(async (conn) => {
-      // Get capacity for department
-      const capacity = await CapacityRepo.get(conn, { departmentId });
-      const patientsPerHour = capacity?.patients_per_hour ?? 12;
-      const avgMinutes = 60 / patientsPerHour;
-
       // Find next available slot (simple: next hour)
       const now = new Date();
       const nextSlot = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
       nextSlot.setMinutes(0, 0, 0); // Round to hour
 
-      return AppointmentRepo.create(conn, {
+      const appointment = await AppointmentRepo.create(conn, {
         patientId: req.user.id,
         doctorId: null,
         departmentId,
         scheduledAt: nextSlot,
         notes: notes || "Auto-booked via registration"
       });
+      return { ...appointment, scheduledAt: nextSlot };
     });
 
     // Send SMS notification
@@ -70,7 +65,7 @@ appointmentRoutes.post("/book", requireAuth, requireRole("PATIENT"), validateBod
           payload: {
             patientName: user[0].full_name,
             departmentName: department[0].name,
-            scheduledAt: created.scheduled_at.toLocaleString("ar-EG", {
+            scheduledAt: created.scheduledAt.toLocaleString("ar-EG", {
               year: "numeric",
               month: "long",
               day: "numeric",
@@ -94,7 +89,7 @@ appointmentRoutes.post("/book", requireAuth, requireRole("PATIENT"), validateBod
             payload: {
               patientName: user[0].full_name,
               departmentName: department[0].name,
-              scheduledAt: created.scheduled_at.toLocaleString("ar-EG", {
+              scheduledAt: created.scheduledAt.toLocaleString("ar-EG", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
@@ -109,7 +104,7 @@ appointmentRoutes.post("/book", requireAuth, requireRole("PATIENT"), validateBod
       conn.release();
     }
 
-    res.json({ appointmentId: created.id, scheduledAt: created.scheduled_at });
+    res.json({ appointmentId: created.id, scheduledAt: created.scheduledAt.toISOString() });
   } catch (e) {
     next(e);
   }
@@ -145,6 +140,25 @@ appointmentRoutes.get("/doctor/today", requireAuth, requireRole("DOCTOR"), async
       [req.user.id, startOfDay, endOfDay]
     );
     res.json({ appointments });
+  } catch (e) {
+    next(e);
+  } finally {
+    conn.release();
+  }
+});
+
+appointmentRoutes.post("/:id/complete", requireAuth, requireRole("DOCTOR", "ADMIN"), validateParams(numericIdParamSchema), async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const appt = await AppointmentRepo.findById(conn, req.params.id);
+    if (!appt) throw notFound("Appointment not found");
+    if (req.user.role === "DOCTOR") {
+      const doctors = await DoctorDepartmentRepo.listDoctorsByDepartment(conn, { departmentId: appt.department_id });
+      const allowed = doctors.some((doctor) => Number(doctor.id) === Number(req.user.id));
+      if (!allowed) throw badRequest("Doctor is not available for this department");
+    }
+    await AppointmentRepo.updateStatus(conn, { id: appt.id, status: "COMPLETED" });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   } finally {

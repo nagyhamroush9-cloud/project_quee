@@ -9,7 +9,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 export function createApp() {
   const app = express();
 
-  app.set('trust proxy', true);
+  app.set('trust proxy', env.nodeEnv === 'production' ? 1 : false);
   app.use(helmet());
   app.use(
     cors({
@@ -22,11 +22,12 @@ export function createApp() {
       windowMs: 60 * 1000,
       limit: 200,
       standardHeaders: "draft-7",
-      legacyHeaders: false
+      legacyHeaders: false,
+      trustProxy: env.nodeEnv === 'production'
     })
   );
 
-  app.use("/", apiRouter);
+  app.use("/api", apiRouter);
   app.use(errorHandler);
 
   return app;

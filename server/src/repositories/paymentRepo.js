@@ -15,8 +15,8 @@ export const PaymentRepo = {
        LEFT JOIN appointments a ON a.id = p.appointment_id
        WHERE p.patient_id = ?
        ORDER BY p.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [patientId, parseInt(limit, 10), parseInt(offset, 10)]
+       LIMIT ${limit} OFFSET ${offset}`,
+      [patientId]
     );
     return rows;
   }

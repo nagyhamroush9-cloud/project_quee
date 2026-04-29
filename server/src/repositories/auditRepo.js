@@ -19,8 +19,7 @@ export const AuditRepo = {
       `SELECT id, actor_user_id, action, entity_type, entity_id, before_json, after_json, created_at
        FROM audit_log
        ORDER BY id DESC
-       LIMIT ? OFFSET ?`,
-      [parseInt(limit, 10), parseInt(offset, 10)]
+       LIMIT ${limit} OFFSET ${offset}`
     );
     return rows;
   }

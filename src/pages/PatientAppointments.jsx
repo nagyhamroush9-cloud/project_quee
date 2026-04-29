@@ -6,24 +6,37 @@ import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Select } from "../components/Select";
+import { useAuth } from "../state/auth.jsx";
 
 export function PatientAppointments() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [departmentId, setDepartmentId] = useState("");
+  const [departmentId, setDepartmentId] = useState(user?.department?.id || user?.department_id || "");
   const [doctorId, setDoctorId] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get("/departments").then((r) => setDepartments(r.data.departments));
-    api.get("/appointments/me").then((r) => setAppointments(r.data.appointments));
+    api
+      .get("/departments")
+      .then((r) => setDepartments(r.data.departments || []))
+      .catch(() => toast.error(t("loadFailed")));
+    api
+      .get("/appointments/me")
+      .then((r) => setAppointments(r.data.appointments || []))
+      .catch(() => toast.error(t("loadFailed")));
   }, []);
 
   useEffect(() => {
+    const userDepartmentId = user?.department?.id || user?.department_id || "";
+    if (!departmentId && userDepartmentId) {
+      setDepartmentId(userDepartmentId);
+      return;
+    }
     if (!departmentId) {
       setDoctors([]);
       setDoctorId("");
@@ -33,7 +46,7 @@ export function PatientAppointments() {
       .get(`/departments/${departmentId}/doctors`)
       .then((r) => setDoctors(r.data.doctors || []))
       .catch(() => setDoctors([]));
-  }, [departmentId]);
+  }, [departmentId, user?.department?.id, user?.department_id]);
 
   return (
     <div className="space-y-6">
@@ -45,7 +58,11 @@ export function PatientAppointments() {
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
             <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">{t("department")}</div>
-            <Select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+            <Select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              disabled={user?.role === "PATIENT" && Boolean(user?.department?.id || user?.department_id)}
+            >
               <option value="">--</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -57,7 +74,7 @@ export function PatientAppointments() {
           <div>
             <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">{t("doctor")}</div>
             <Select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} disabled={!departmentId}>
-              <option value="">{doctors.length ? "--" : "No doctors mapped"}</option>
+              <option value="">{doctors.length ? "--" : t("noDoctorsMapped")}</option>
               {doctors.map((doc) => (
                 <option key={doc.id} value={doc.id}>
                   {doc.full_name}
@@ -76,8 +93,12 @@ export function PatientAppointments() {
         </div>
         <div className="mt-4">
           <Button
-            disabled={loading}
+            disabled={loading || !departmentId || !scheduledAt}
             onClick={async () => {
+              if (!departmentId || !scheduledAt) {
+                toast.error(t("fillRequiredFields"));
+                return;
+              }
               setLoading(true);
               try {
                 const iso = scheduledAt ? new Date(scheduledAt).toISOString() : "";
@@ -87,11 +108,13 @@ export function PatientAppointments() {
                   scheduledAt: iso,
                   notes: notes || undefined
                 });
-                toast.success("Booked");
+                toast.success(t("appointmentBooked"));
                 const { data } = await api.get("/appointments/me");
-                setAppointments(data.appointments);
+                setAppointments(data.appointments || []);
+                setScheduledAt("");
+                setNotes("");
               } catch (e) {
-                toast.error(e?.response?.data?.error?.message || "Failed");
+                toast.error(e?.response?.data?.error?.message || t("bookingFailed"));
               } finally {
                 setLoading(false);
               }
@@ -103,7 +126,7 @@ export function PatientAppointments() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">My appointments</div>
+        <div className="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">{t("myAppointments")}</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-950 dark:text-slate-400">
@@ -118,7 +141,7 @@ export function PatientAppointments() {
               {appointments.map((a) => (
                 <tr key={a.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="p-3">{a.department_name}</td>
-                  <td className="p-3">{a.doctor_name || "—"}</td>
+                  <td className="p-3">{a.doctor_name || "-"}</td>
                   <td className="p-3">{new Date(a.scheduled_at).toLocaleString()}</td>
                   <td className="p-3">{a.status}</td>
                 </tr>
@@ -126,7 +149,7 @@ export function PatientAppointments() {
               {!appointments.length ? (
                 <tr>
                   <td className="p-6 text-center text-slate-500 dark:text-slate-400" colSpan={4}>
-                    —
+                    {t("noAppointments")}
                   </td>
                 </tr>
               ) : null}

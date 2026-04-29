@@ -127,6 +127,34 @@ export async function initDatabase() {
 
     await ensurePaymentsAppointmentNullable(conn);
 
+    await ensureColumn(conn, {
+      table: "users",
+      column: "date_of_birth",
+      ddl: "ALTER TABLE users ADD COLUMN date_of_birth DATE NULL AFTER role"
+    });
+    await ensureColumn(conn, {
+      table: "users",
+      column: "is_disabled",
+      ddl: "ALTER TABLE users ADD COLUMN is_disabled TINYINT(1) NOT NULL DEFAULT 0 AFTER date_of_birth"
+    });
+    await ensureColumn(conn, {
+      table: "users",
+      column: "has_special_needs",
+      ddl: "ALTER TABLE users ADD COLUMN has_special_needs TINYINT(1) NOT NULL DEFAULT 0 AFTER is_disabled"
+    });
+    await ensureColumn(conn, {
+      table: "users",
+      column: "department_id",
+      ddl: "ALTER TABLE users ADD COLUMN department_id BIGINT UNSIGNED NULL AFTER has_special_needs"
+    });
+    try {
+      await conn.execute(
+        "ALTER TABLE users ADD CONSTRAINT fk_users_department FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL"
+      );
+    } catch {
+      // ignore if constraint already exists
+    }
+
     // Seed departments if none exist
     const [deptRows] = await conn.execute("SELECT COUNT(*) AS c FROM departments");
     if (Number(deptRows[0]?.c ?? 0) === 0) {

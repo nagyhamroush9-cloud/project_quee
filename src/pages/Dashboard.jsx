@@ -43,26 +43,26 @@ export function Dashboard() {
       <div>
         <div className="text-2xl font-semibold">{t("dashboard")}</div>
         <div className="text-sm text-slate-500 dark:text-slate-400">
-          {user?.full_name || user?.fullName} • {role}
+          {user?.full_name || user?.fullName} - {role}
         </div>
       </div>
 
       {role === "ADMIN" ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <StatCard label={t("users")} value={(analytics?.usersByRole?.patients ?? 0) + (analytics?.usersByRole?.doctors ?? 0)} />
-          <StatCard label={t("queue")} value={analytics?.queueStats?.waiting ?? 0} hint="Waiting" />
-          <StatCard label={t("appointments")} value={analytics?.apptStats?.booked ?? 0} hint="Booked" />
+          <StatCard label={t("queue")} value={analytics?.queueStats?.waiting ?? 0} hint={t("waiting")} />
+          <StatCard label={t("appointments")} value={analytics?.apptStats?.booked ?? 0} hint={t("booked")} />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <StatCard label={t("queue")} value="Live" hint="Real-time updates enabled" />
-          <StatCard label={t("appointments")} value="Today" hint="Schedule and queue" />
-          <StatCard label={t("notifications")} value="In-app + SMS/WhatsApp" hint="Simulated channels" />
+          <StatCard label={t("queue")} value={t("live")} hint={t("realtimeUpdates")} />
+          <StatCard label={t("appointments")} value={t("today")} hint={t("scheduleAndQueue")} />
+          <StatCard label={t("notifications")} value={t("inAppSms")} hint={t("simulatedChannels")} />
         </div>
       )}
 
       <Card className="p-4">
-        <div className="mb-3 text-sm font-semibold">Patients per day (last 7 days)</div>
+        <div className="mb-3 text-sm font-semibold">{t("patientsPerDay")}</div>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trend}>
@@ -83,4 +83,3 @@ export function Dashboard() {
     </div>
   );
 }
-

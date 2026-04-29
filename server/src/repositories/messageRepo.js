@@ -16,8 +16,8 @@ export const MessageRepo = {
        JOIN users u ON u.id = m.sender_id
        WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
        ORDER BY m.created_at DESC
-       LIMIT ? OFFSET ?`,
-            [userId1, userId2, userId2, userId1, parseInt(limit, 10), parseInt(offset, 10)]
+       LIMIT ${limit} OFFSET ${offset}`,
+            [userId1, userId2, userId2, userId1]
         );
         return rows.reverse(); // Reverse to show oldest first
     },
@@ -31,8 +31,8 @@ export const MessageRepo = {
        JOIN users ru ON ru.id = m.receiver_id
        WHERE m.sender_id = ? OR m.receiver_id = ?
        ORDER BY m.created_at DESC
-       LIMIT ? OFFSET ?`,
-            [userId, userId, parseInt(limit, 10), parseInt(offset, 10)]
+       LIMIT ${limit} OFFSET ${offset}`,
+            [userId, userId]
         );
         return rows;
     },
